@@ -4,7 +4,7 @@
 .overlay {
   display: block;
   position: fixed;
-  background-color: rgb(255, 127, 58);
+  background-color: rgb(58, 255, 130);
   width: 100vw;
   height: calc(100vh * 2);
   pointer-events: none;
