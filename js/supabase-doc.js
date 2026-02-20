@@ -475,6 +475,7 @@ export function attachAutosaveHandlers(columnEls) {
         haveLock = true;
 
         body.contentEditable = "true";
+        requestAnimationFrame(() => collapseEmptyBlocks());
         el.dataset.blocked = "false";
         el.title = "";
 
