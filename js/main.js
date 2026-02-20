@@ -12,16 +12,19 @@ console.log("loaded columns:", cols.length);
 attachAutosaveHandlers(cols);
 mountAddColumnTile();
 
-function bindAppHeightToVisualViewport() {
+function bindKbd() {
   const vv = window.visualViewport;
-  const set = () => {
-    const h = vv ? vv.height : window.innerHeight;
-    document.documentElement.style.setProperty("--app-height", `${h}px`);
-  };
+  if (!vv) return;
+  const set = () =>
+    document.documentElement.style.setProperty(
+      "--kbd",
+      `${Math.max(
+        0,
+        Math.round(window.innerHeight - vv.height - vv.offsetTop)
+      )}px`
+    );
   set();
-  vv?.addEventListener("resize", set);
-  vv?.addEventListener("scroll", set);
-  window.addEventListener("orientationchange", set);
+  vv.addEventListener("resize", set);
+  vv.addEventListener("scroll", set);
 }
-
-bindAppHeightToVisualViewport();
+bindKbd();
