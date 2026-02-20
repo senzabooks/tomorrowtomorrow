@@ -108,30 +108,6 @@ function sanitizeHtml(html) {
 }
 
 /* Keep top-level text wrapped in <p> and avoid stray text nodes */
-function normalizeParagraphs(body) {
-  // Remove top-level whitespace-only text nodes
-  Array.from(body.childNodes).forEach((n) => {
-    if (n.nodeType === Node.TEXT_NODE && (n.textContent || "").trim() === "")
-      n.remove();
-  });
-
-  // Wrap remaining top-level text nodes into <p>
-  let node = body.firstChild;
-  while (node) {
-    const next = node.nextSibling;
-    if (node.nodeType === Node.TEXT_NODE) {
-      const text = node.textContent || "";
-      if (text.trim() === "") {
-        node.remove();
-      } else {
-        const p = document.createElement("p");
-        p.appendChild(node); // move text node into <p>
-        body.insertBefore(p, next);
-      }
-    }
-    node = next;
-  }
-}
 
 /* Image processing + upload */
 function buildImageStoragePath(colId) {
@@ -298,11 +274,9 @@ export async function saveColumnEl(el) {
   const body = getBody(el);
   if (!body) return false;
 
-  // IMPORTANT: Do NOT mutate the live contentEditable DOM while the user types.
-  // Normalize in a detached wrapper so caret/selection won't jump.
   const wrapper = document.createElement("div");
   wrapper.innerHTML = body.innerHTML || "";
-  normalizeParagraphs(wrapper);
+
   const html = wrapper.innerHTML;
 
   const { data, error } = await supabase

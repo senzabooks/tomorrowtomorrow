@@ -28,6 +28,8 @@
   scroll-snap-type: x mandatory;
 }
 .column {
+  background: green;
+  isolation: isolate;
   position: relative;
   flex: 0 0 400px;
   padding: 15px 15px 30px 15px;
@@ -73,7 +75,7 @@ button {
 
 .col-img {
   max-height: 100px;
-  display: inline;
+  display: inline-block;
   mix-blend-mode: multiply;
 }
 
@@ -91,6 +93,8 @@ button {
   margin: 0;
   white-space: normal;
   overflow-wrap: anywhere;
+  padding-bottom: calc(var(--kbd, 0px) + 16px);
+  box-sizing: border-box;
 }
 
 /* media */
