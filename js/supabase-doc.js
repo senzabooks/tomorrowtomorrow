@@ -503,6 +503,28 @@ export function attachAutosaveHandlers(columnEls) {
 
     body.addEventListener("input", onEdit);
 
+    // iOS Safari: collapse empty blocks while editing
+    function collapseEmptyBlocks() {
+      if (!haveLock || ACTIVE_COL_ID !== id) return;
+
+      const blocks = body.querySelectorAll("p, div");
+      for (const b of blocks) {
+        const html = (b.innerHTML || "").replace(/\s/g, "").toLowerCase();
+        const isEmptyLine = html === "<br>" || html === "<br/>";
+
+        if (isEmptyLine) {
+          b.style.margin = "0";
+          b.style.padding = "0";
+        } else {
+          b.style.margin = "";
+          b.style.padding = "";
+        }
+      }
+    }
+
+    body.addEventListener("focus", collapseEmptyBlocks);
+    body.addEventListener("input", collapseEmptyBlocks);
+
     // Paste images only (text paste falls through)
     body.addEventListener("paste", async (e) => {
       if (!haveLock || ACTIVE_COL_ID !== id) return;
