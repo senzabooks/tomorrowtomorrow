@@ -1,14 +1,18 @@
 // js/supabase-doc.js
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-/* Supabase */
+/* ============================================================================
+   Supabase
+============================================================================ */
 const SUPABASE_URL = "https://tmiiwidxtdjhklgfgqbr.supabase.co";
 const SUPABASE_ANON_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRtaWl3aWR4dGRqaGtsZ2ZncWJyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA5MDMwMzAsImV4cCI6MjA4NjQ3OTAzMH0.QHjeuWBwuP1q6tAofQC5ITDacln6q8LA5qZPmqmyguI";
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-/* Client identity (per browser) */
+/* ============================================================================
+   Client identity (per browser)
+============================================================================ */
 const CLIENT_ID_KEY = "tmorrow_client_id";
 export const CLIENT_ID =
   localStorage.getItem(CLIENT_ID_KEY) ||
@@ -18,34 +22,49 @@ export const CLIENT_ID =
     return id;
   })();
 
-/* Lock + polling */
+/* ============================================================================
+   Constants / timing
+============================================================================ */
 const LOCK_TTL_SECONDS = 60;
 const LOCK_REFRESH_MS = 20000;
 const POLL_ACTIVE_MS = 3000;
 const POLL_IDLE_MS = 15000;
 
-/* Images */
+/* ============================================================================
+   Images
+============================================================================ */
 const IMAGE_BUCKET = "Images";
 const IMAGE_MAX_EDGE = 300;
 const IMAGE_JPEG_QUALITY = 0.65;
 
-/* Single-active column per client */
+/* ============================================================================
+   State (single active column per client)
+============================================================================ */
 let ACTIVE_COL_ID = null;
 let ACTIVE_EL = null;
 
-/* Internal registries */
+/* ============================================================================
+   Registries / timers
+============================================================================ */
 const COLS_BY_ID = new Map(); // id -> <section.column>
 const saveTimers = new Map(); // el -> timeout
 let POLL_STARTED = false;
 let UNLOAD_HOOKED = false;
 
-/* DOM */
+/* ============================================================================
+   DOM helpers
+============================================================================ */
 export function mainEl() {
   return document.querySelector(".main-content");
 }
+
 function getBody(el) {
   return el.querySelector(".col-body");
 }
+
+/* ============================================================================
+   Caret / focus helpers (mobile-friendly)
+============================================================================ */
 
 // Ensure body has a stable caret target (important for mobile + empty columns)
 function ensureEditableRoot(body) {
@@ -53,7 +72,6 @@ function ensureEditableRoot(body) {
   if (!html) body.innerHTML = "<p><br></p>";
 }
 
-// Robust caret placement (works better when called after rAFs)
 function placeCaretAtEnd(el) {
   el.focus({ preventScroll: true });
 
@@ -66,11 +84,10 @@ function placeCaretAtEnd(el) {
   sel.addRange(range);
 }
 
-// Focus + caret after layout/paint (important for iOS + newly-editable)
 async function focusAndPlaceCaretAtEnd(body) {
   ensureEditableRoot(body);
 
-  // wait for paint/layout (helps with mobile + newly toggled contentEditable)
+  // wait for paint/layout (helps with iOS + newly toggled contentEditable)
   await new Promise((r) => requestAnimationFrame(r));
   await new Promise((r) => requestAnimationFrame(r));
 
@@ -86,30 +103,41 @@ async function focusAndPlaceCaretAtEnd(body) {
   } catch {}
 }
 
-/* Lock helpers */
+/* ============================================================================
+   Lock helpers
+============================================================================ */
 function lockIsExpired(locked_at) {
   if (!locked_at) return true;
   return Date.now() - new Date(locked_at).getTime() > LOCK_TTL_SECONDS * 1000;
 }
 
-/* Sanitize saved HTML (remove UI artifacts only) */
-function sanitizeHtml(html) {
-  const wrapper = document.createElement("div");
-  wrapper.innerHTML = html || "";
-  wrapper.querySelectorAll(".lock-note").forEach((n) => n.remove());
-  wrapper.querySelectorAll("*").forEach((el) => {
-    if (
-      (el.textContent || "").trim() === "Someone else is editing this column"
-    ) {
-      el.remove();
-    }
-  });
-  return wrapper.innerHTML;
-}
+/* ============================================================================
+   HTML sanitize / normalize (DISABLED for now)
+   (Commented out as requested — you can remove later.)
+============================================================================ */
 
-/* Keep top-level text wrapped in <p> and avoid stray text nodes */
+// function sanitizeHtml(html) {
+//   const wrapper = document.createElement("div");
+//   wrapper.innerHTML = html || "";
+//   wrapper.querySelectorAll(".lock-note").forEach((n) => n.remove());
+//   wrapper.querySelectorAll("*").forEach((el) => {
+//     if (
+//       (el.textContent || "").trim() === "Someone else is editing this column"
+//     ) {
+//       el.remove();
+//     }
+//   });
+//   return wrapper.innerHTML;
+// }
 
-/* Image processing + upload */
+// function normalizeHtml(html) {
+//   // placeholder for future normalization if you decide to re-introduce it
+//   return html || "";
+// }
+
+/* ============================================================================
+   Image processing + upload
+============================================================================ */
 function buildImageStoragePath(colId) {
   const now = new Date();
   const yyyy = String(now.getUTCFullYear());
@@ -195,7 +223,9 @@ function insertImageAtCursor(url, imgId, storagePath) {
   document.execCommand("insertHTML", false, html);
 }
 
-/* Columns: render + load */
+/* ============================================================================
+   Columns: render + load
+============================================================================ */
 export function renderColumn(row) {
   const s = document.createElement("section");
   s.className = "column";
@@ -208,7 +238,11 @@ export function renderColumn(row) {
 
   const body = document.createElement("div");
   body.className = "col-body";
-  body.innerHTML = sanitizeHtml(row.html || "");
+
+  // HTML cleaning disabled for now:
+  // body.innerHTML = sanitizeHtml(row.html || "");
+  body.innerHTML = row.html || "";
+
   body.contentEditable = "false";
 
   s.appendChild(note);
@@ -240,7 +274,9 @@ export async function loadAndRenderColumns() {
   return els;
 }
 
-/* RPC locks */
+/* ============================================================================
+   RPC locks
+============================================================================ */
 export async function acquireLock(id) {
   const { data, error } = await supabase.rpc("acquire_column_lock", {
     p_id: id,
@@ -268,16 +304,18 @@ export async function refreshLock(id) {
   return acquireLock(id);
 }
 
-/* Save (only if lock owned) */
+/* ============================================================================
+   Save (only if lock owned)
+============================================================================ */
 export async function saveColumnEl(el) {
   const id = String(el.dataset.colId || "");
   const body = getBody(el);
   if (!body) return false;
 
-  const wrapper = document.createElement("div");
-  wrapper.innerHTML = body.innerHTML || "";
-
-  const html = wrapper.innerHTML;
+  // HTML cleaning disabled for now:
+  // const html = normalizeHtml(body.innerHTML || "");
+  // const html = sanitizeHtml(body.innerHTML || "");
+  const html = body.innerHTML || "";
 
   const { data, error } = await supabase
     .from("columns")
@@ -313,7 +351,9 @@ export function scheduleSave(el, delayMs = 300) {
   );
 }
 
-/* Create column (race-proof via RPC) */
+/* ============================================================================
+   Create column (race-proof via RPC)
+============================================================================ */
 export async function createNewColumn() {
   const { data, error } = await supabase.rpc("create_next_column");
   if (error) {
@@ -328,9 +368,10 @@ export async function createNewColumn() {
   return row;
 }
 
-/* Attach editor behavior */
+/* ============================================================================
+   Attach editor behavior
+============================================================================ */
 export function attachAutosaveHandlers(columnEls) {
-  // Bind once per element
   columnEls.forEach((el) => {
     const id = String(el?.dataset?.colId || "");
     if (!id) return;
@@ -440,12 +481,10 @@ export function attachAutosaveHandlers(columnEls) {
         startKeepAlive();
         resetInactivity();
 
-        // IMPORTANT: new columns should auto-focus + caret WITHOUT requiring user click
         if (el.dataset.new === "true") {
           delete el.dataset.new;
           focusAndPlaceCaretAtEnd(body);
         } else {
-          // normal focus (no caret forcing)
           requestAnimationFrame(() => body.focus({ preventScroll: true }));
         }
       } finally {
@@ -554,7 +593,6 @@ export function attachAutosaveHandlers(columnEls) {
       const isMac = navigator.platform.toLowerCase().includes("mac");
       const mod = isMac ? e.metaKey : e.ctrlKey;
 
-      // Italic
       if (mod && e.key.toLowerCase() === "i") {
         e.preventDefault();
         document.execCommand("italic", false, null);
@@ -562,7 +600,6 @@ export function attachAutosaveHandlers(columnEls) {
         return;
       }
 
-      // Underline
       if (mod && e.key.toLowerCase() === "u") {
         e.preventDefault();
         document.execCommand("underline", false, null);
@@ -577,7 +614,6 @@ export function attachAutosaveHandlers(columnEls) {
         return;
       }
 
-      // Undo / Redo
       if (mod && e.key.toLowerCase() === "z") {
         e.preventDefault();
         if (e.shiftKey) document.execCommand("redo", false, null);
@@ -597,6 +633,7 @@ export function attachAutosaveHandlers(columnEls) {
 
       if (e.key === "Enter") {
         if (isTouch) {
+          // let iOS handle Enter
           return;
         }
 
@@ -608,14 +645,15 @@ export function attachAutosaveHandlers(columnEls) {
       }
     });
 
-    // NEW: if this element was just created, auto-lock it right now
-    // (so user doesn't need an extra click)
+    // Auto-lock newly created column
     if (el.dataset.new === "true") {
       attemptLock();
     }
   });
 
-  // Poll (metadata first, html only if updated_at changed)
+  /* ==========================================================================
+     Polling (metadata first, html only if updated_at changed)
+  ========================================================================== */
   if (!POLL_STARTED) {
     POLL_STARTED = true;
 
@@ -673,9 +711,11 @@ export function attachAutosaveHandlers(columnEls) {
               const body = el ? getBody(el) : null;
               if (!body) continue;
 
-              const incoming = sanitizeHtml(r.html || "");
-              if (body.innerHTML !== incoming) body.innerHTML = incoming;
+              // HTML cleaning disabled for now:
+              // const incoming = sanitizeHtml(r.html || "");
+              const incoming = r.html || "";
 
+              if (body.innerHTML !== incoming) body.innerHTML = incoming;
               body.contentEditable = "false";
             }
           }
@@ -689,7 +729,9 @@ export function attachAutosaveHandlers(columnEls) {
     pollLoop();
   }
 
-  // Release lock on unload (best effort)
+  /* ==========================================================================
+     Unload cleanup
+  ========================================================================== */
   if (!UNLOAD_HOOKED) {
     UNLOAD_HOOKED = true;
     window.addEventListener("beforeunload", () => {
