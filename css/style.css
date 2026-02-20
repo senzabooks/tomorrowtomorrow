@@ -1,7 +1,7 @@
 /* main structure and elements */
 
 .overlay {
-  display: block;
+  display: none;
   position: fixed;
   background-color: rgb(255, 0, 0);
   width: 100vw;
