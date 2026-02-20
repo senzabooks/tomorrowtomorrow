@@ -593,8 +593,14 @@ export function attachAutosaveHandlers(columnEls) {
         return;
       }
 
-      // Enter -> single <br>
+      const isTouch = matchMedia("(hover: none) and (pointer: coarse)").matches;
+
       if (e.key === "Enter") {
+        if (isTouch) {
+          return;
+        }
+
+        // desktop : force single <br>
         e.preventDefault();
         document.execCommand("insertHTML", false, "<br>");
         onEdit();
