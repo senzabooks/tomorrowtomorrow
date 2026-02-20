@@ -267,7 +267,7 @@ export async function saveColumnEl(el) {
   const id = el.dataset.colId;
   const body = getBody(el);
   if (!body) return false;
-
+  normalizeParagraphs(body);
   const html = body.innerHTML;
 
   const { data, error } = await supabase
@@ -449,7 +449,6 @@ export function attachAutosaveHandlers(columnEls) {
 
     const onEdit = () => {
       if (!haveLock || ACTIVE_COL_ID !== id) return;
-      normalizeParagraphs(body);
       scheduleSave(el, 250);
       resetInactivity();
     };
