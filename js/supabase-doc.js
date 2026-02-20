@@ -157,30 +157,6 @@ function lockIsExpired(locked_at) {
 }
 
 /* ============================================================================
-   HTML sanitize / normalize (DISABLED for now)
-   (Commented out as requested — you can remove later.)
-============================================================================ */
-
-// function sanitizeHtml(html) {
-//   const wrapper = document.createElement("div");
-//   wrapper.innerHTML = html || "";
-//   wrapper.querySelectorAll(".lock-note").forEach((n) => n.remove());
-//   wrapper.querySelectorAll("*").forEach((el) => {
-//     if (
-//       (el.textContent || "").trim() === "Someone else is editing this column"
-//     ) {
-//       el.remove();
-//     }
-//   });
-//   return wrapper.innerHTML;
-// }
-
-// function normalizeHtml(html) {
-//   // placeholder for future normalization if you decide to re-introduce it
-//   return html || "";
-// }
-
-/* ============================================================================
    Image processing + upload
 ============================================================================ */
 function buildImageStoragePath(colId) {
@@ -279,13 +255,11 @@ export function renderColumn(row) {
 
   const note = document.createElement("div");
   note.className = "lock-note";
-  note.textContent = "Someone else is editing this column";
+  note.textContent = "*Someone else is editing this column right now*";
 
   const body = document.createElement("div");
   body.className = "col-body";
 
-  // HTML cleaning disabled for now:
-  // body.innerHTML = sanitizeHtml(row.html || "");
   body.innerHTML = row.html || "";
 
   body.contentEditable = "false";

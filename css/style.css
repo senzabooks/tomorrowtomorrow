@@ -48,14 +48,13 @@
    Lock / state UI
 ============================================================================ */
 .column .lock-note {
+  font-weight: bold;
   position: relative;
-  color: red;
-  z-index: 10;
   display: none;
 }
 
 .column[data-blocked="true"] .lock-note {
-  display: block;
+  display: flex;
 }
 
 /* ============================================================================
