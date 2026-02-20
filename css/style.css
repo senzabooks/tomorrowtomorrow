@@ -28,7 +28,7 @@
   scroll-snap-type: x mandatory;
 }
 .column {
-  background: green;
+  background: rgb(234, 255, 0);
   isolation: isolate;
   position: relative;
   flex: 0 0 400px;
