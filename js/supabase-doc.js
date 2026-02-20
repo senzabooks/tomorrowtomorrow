@@ -445,7 +445,7 @@ export function attachAutosaveHandlers(columnEls) {
     }
 
     setViewerState(el.dataset.blocked === "true");
-    el.addEventListener("pointerdown", () => attemptLock());
+    el.addEventListener("click", () => attemptLock());
 
     const onEdit = () => {
       if (!haveLock || ACTIVE_COL_ID !== id) return;

@@ -1,7 +1,7 @@
 /* main structure and elements */
 
 .overlay {
-  display: block;
+  display: none;
   position: fixed;
   background-color: rgb(255, 0, 0);
   width: 100vw;
@@ -28,8 +28,10 @@
   flex: 0 0 400px;
   padding: 15px 15px 30px 15px;
   display: block;
+  isolation: isolate;
   overflow-y: auto;
   overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
 }
 
 .column .lock-note {
@@ -38,9 +40,9 @@
   z-index: 10;
   display: none;
 }
-.column[data-blocked="true"] {
+/* .column[data-blocked="true"] {
   pointer-events: none;
-}
+} */
 .column[data-blocked="true"] .lock-note {
   display: block;
 }
@@ -69,7 +71,7 @@ button {
 
 .col-img {
   max-height: 100px;
-  image-resolution: 10px;
+  display: inline;
   mix-blend-mode: multiply;
 }
 
