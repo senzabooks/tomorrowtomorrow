@@ -94,13 +94,58 @@ async function focusAndPlaceCaretAtEnd(body) {
   body.focus({ preventScroll: true });
   placeCaretAtEnd(body);
 
-  // try to keep caret visible
-  try {
-    const sel = window.getSelection();
-    const node = sel?.anchorNode;
-    const el = node?.nodeType === 1 ? node : node?.parentElement;
-    el?.scrollIntoView?.({ block: "nearest" });
-  } catch {}
+  // keep caret visible inside the column scroller (iOS Safari)
+  await new Promise((r) => requestAnimationFrame(r));
+  scrollCaretIntoView(body);
+}
+
+/* ============================================================================
+   fix caret on safari ios
+============================================================================ */
+function scrollCaretIntoView(body, padding = 24) {
+  // Scroll the column scroller (not the page)
+  const scroller = body.closest(".column");
+  if (!scroller) return;
+
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0) return;
+
+  const range = sel.getRangeAt(0).cloneRange();
+
+  // Try to get caret rect; if empty, insert a temporary marker
+  let rect = range.getBoundingClientRect();
+  if (!rect || (rect.top === 0 && rect.bottom === 0)) {
+    const marker = document.createElement("span");
+    marker.textContent = "\u200b"; // zero-width space
+    range.insertNode(marker);
+    rect = marker.getBoundingClientRect();
+    marker.remove();
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+
+  const columnRect = scroller.getBoundingClientRect();
+
+  // Estimate keyboard overlap: (viewport height - visualViewport height)
+  const vv = window.visualViewport;
+  const keyboard = vv ? Math.max(0, window.innerHeight - vv.height) : 0;
+
+  // Visible area inside the column, adjusted for keyboard
+  const visibleTop = columnRect.top + padding;
+  const visibleBottom =
+    Math.min(columnRect.bottom, (vv?.height ?? window.innerHeight) - keyboard) -
+    padding;
+
+  // If caret is below visible area, scroll down
+  if (rect.bottom > visibleBottom) {
+    scroller.scrollTop += rect.bottom - visibleBottom;
+    return;
+  }
+
+  // If caret is above visible area, scroll up
+  if (rect.top < visibleTop) {
+    scroller.scrollTop -= visibleTop - rect.top;
+  }
 }
 
 /* ============================================================================
@@ -485,7 +530,10 @@ export function attachAutosaveHandlers(columnEls) {
           delete el.dataset.new;
           focusAndPlaceCaretAtEnd(body);
         } else {
-          requestAnimationFrame(() => body.focus({ preventScroll: true }));
+          requestAnimationFrame(() => {
+            body.focus({ preventScroll: true });
+            scrollCaretIntoView(body);
+          });
         }
       } finally {
         locking = false;

@@ -2,18 +2,16 @@
    Layout / structure
 ============================================================================ */
 .overlay {
-  display: none;
+  display: block;
   position: fixed;
-  background-color: rgb(255, 0, 0);
+  background-color: lawngreen;
   width: 100vw;
   height: calc(100vh * 2);
   pointer-events: none;
-  z-index: -99;
-  font-size: 4rem;
-  font-family: cursive;
-  color: lightpink;
-  padding-top: 10px;
-  padding-left: 10px;
+  mix-blend-mode: multiply;
+  z-index: 100;
+  padding-top: 15px;
+  padding-left: 15px;
 }
 
 .main-content {
@@ -32,7 +30,7 @@
 }
 
 .column {
-  background: lightsalmon;
+  /* background: lightsalmon; */
   isolation: isolate;
   position: relative;
 
@@ -61,7 +59,7 @@
 }
 
 /* ============================================================================
-  buttons etc.
+  buttons, etc.
 ============================================================================ */
 
 .Add-Column {
