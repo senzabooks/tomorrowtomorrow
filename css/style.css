@@ -122,3 +122,11 @@
     max-width: 90vw;
   }
 }
+
+@media (hover: none) and (pointer: coarse) {
+  .main-content .column {
+    flex: 0 0 90vw;
+    width: 90vw;
+    max-width: 90vw;
+  }
+}
