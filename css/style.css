@@ -40,9 +40,7 @@
   z-index: 10;
   display: none;
 }
-/* .column[data-blocked="true"] {
-  pointer-events: none;
-} */
+
 .column[data-blocked="true"] .lock-note {
   display: block;
 }
