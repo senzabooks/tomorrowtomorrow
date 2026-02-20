@@ -46,14 +46,44 @@ export function mainEl() {
 function getBody(el) {
   return el.querySelector(".col-body");
 }
+
+// Ensure body has a stable caret target (important for mobile + empty columns)
+function ensureEditableRoot(body) {
+  const html = (body.innerHTML || "").trim();
+  if (!html) body.innerHTML = "<p><br></p>";
+}
+
+// Robust caret placement (works better when called after rAFs)
 function placeCaretAtEnd(el) {
-  el.focus();
+  el.focus({ preventScroll: true });
+
   const range = document.createRange();
   range.selectNodeContents(el);
   range.collapse(false);
+
   const sel = window.getSelection();
   sel.removeAllRanges();
   sel.addRange(range);
+}
+
+// Focus + caret after layout/paint (important for iOS + newly-editable)
+async function focusAndPlaceCaretAtEnd(body) {
+  ensureEditableRoot(body);
+
+  // wait for paint/layout (helps with mobile + newly toggled contentEditable)
+  await new Promise((r) => requestAnimationFrame(r));
+  await new Promise((r) => requestAnimationFrame(r));
+
+  body.focus({ preventScroll: true });
+  placeCaretAtEnd(body);
+
+  // try to keep caret visible
+  try {
+    const sel = window.getSelection();
+    const node = sel?.anchorNode;
+    const el = node?.nodeType === 1 ? node : node?.parentElement;
+    el?.scrollIntoView?.({ block: "nearest" });
+  } catch {}
 }
 
 /* Lock helpers */
@@ -264,11 +294,16 @@ export async function refreshLock(id) {
 
 /* Save (only if lock owned) */
 export async function saveColumnEl(el) {
-  const id = el.dataset.colId;
+  const id = String(el.dataset.colId || "");
   const body = getBody(el);
   if (!body) return false;
-  normalizeParagraphs(body);
-  const html = body.innerHTML;
+
+  // IMPORTANT: Do NOT mutate the live contentEditable DOM while the user types.
+  // Normalize in a detached wrapper so caret/selection won't jump.
+  const wrapper = document.createElement("div");
+  wrapper.innerHTML = body.innerHTML || "";
+  normalizeParagraphs(wrapper);
+  const html = wrapper.innerHTML;
 
   const { data, error } = await supabase
     .from("columns")
@@ -431,14 +466,14 @@ export function attachAutosaveHandlers(columnEls) {
         startKeepAlive();
         resetInactivity();
 
-        setTimeout(() => {
-          if (el.dataset.new === "true") {
-            placeCaretAtEnd(body);
-            delete el.dataset.new;
-          } else {
-            body.focus();
-          }
-        }, 0);
+        // IMPORTANT: new columns should auto-focus + caret WITHOUT requiring user click
+        if (el.dataset.new === "true") {
+          delete el.dataset.new;
+          focusAndPlaceCaretAtEnd(body);
+        } else {
+          // normal focus (no caret forcing)
+          requestAnimationFrame(() => body.focus({ preventScroll: true }));
+        }
       } finally {
         locking = false;
       }
@@ -592,6 +627,12 @@ export function attachAutosaveHandlers(columnEls) {
         return;
       }
     });
+
+    // NEW: if this element was just created, auto-lock it right now
+    // (so user doesn't need an extra click)
+    if (el.dataset.new === "true") {
+      attemptLock();
+    }
   });
 
   // Poll (metadata first, html only if updated_at changed)
