@@ -29,7 +29,8 @@
   -webkit-overflow-scrolling: touch;
   scroll-snap-type: x mandatory;
 
-  font-size: 20px;
+  font-size: 18px;
+  letter-spacing: -0.3px;
 }
 
 .column {
@@ -38,7 +39,7 @@
   position: relative;
 
   flex: 0 0 400px;
-  padding: 15px 15px 30px 15px;
+  padding: 20px 20px 30px 20px;
 
   display: block;
   overflow-y: scroll;
