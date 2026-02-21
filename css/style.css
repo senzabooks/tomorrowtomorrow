@@ -115,6 +115,12 @@
 /* ============================================================================
    Media: small screens
 ============================================================================ */
+
+@media (max-width: 600px) {
+  .main-content {
+    padding-right: 300px;
+  }
+}
 @media (max-width: 400px) and (hover: none) and (pointer: coarse) {
   .column {
     flex: 0 0 90vw;
