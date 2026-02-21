@@ -4,7 +4,8 @@
 .overlay {
   display: block;
   position: fixed;
-  background-color: rgb(118, 214, 255);
+  background-color: rgb(118, 255, 123);
+  color: rgb(255, 0, 0);
   width: 100vw;
   height: calc(100vh * 2);
   pointer-events: none;
@@ -27,6 +28,8 @@
   overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
   scroll-snap-type: x mandatory;
+
+  font-size: 20px;
 }
 
 .column {
@@ -92,7 +95,7 @@
 
 /* ============================================================================
    Editor state: while editing (contentEditable = true)
-   (Keyboard-safe spacing belongs on the container, not every <p>)
+   (Keyboard-safe spacing)
 ============================================================================ */
 .column .col-body[contenteditable="true"] {
   padding-bottom: calc(var(--kbd, 0px) + 16px);
