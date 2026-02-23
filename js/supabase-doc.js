@@ -63,6 +63,171 @@ function getBody(el) {
 }
 
 /* ============================================================================
+   HTML Sanitizer (allowlist-based)
+============================================================================ */
+const ALLOWED_TAGS = new Set([
+  "P",
+  "BR",
+  "DIV",
+  "SPAN",
+  "B",
+  "I",
+  "U",
+  "S",
+  "EM",
+  "STRONG",
+  "UL",
+  "OL",
+  "LI",
+  "BLOCKQUOTE",
+  "A",
+  "IMG",
+  "H1",
+  "H2",
+  "H3",
+  "H4",
+  "H5",
+  "H6",
+]);
+
+const ALLOWED_ATTRS = {
+  "*": ["class", "title", "aria-label", "aria-hidden", "role"],
+  A: ["href", "target", "rel"],
+  IMG: [
+    "src",
+    "alt",
+    "width",
+    "height",
+    "loading",
+    "decoding",
+    "class",
+    "data-img-id",
+    "data-img-path",
+  ],
+};
+
+function isSafeUrl(url, { allowDataImages = false } = {}) {
+  try {
+    const s = String(url || "").trim();
+    if (!s) return false;
+
+    if (s.startsWith("#")) return true;
+    if (s.startsWith("/") || s.startsWith("./") || s.startsWith("../"))
+      return true;
+
+    if (/[\u0000-\u001F\u007F]/.test(s)) return false;
+
+    const u = new URL(s, window.location.origin);
+    const proto = u.protocol.toLowerCase();
+
+    if (
+      proto === "http:" ||
+      proto === "https:" ||
+      proto === "mailto:" ||
+      proto === "tel:"
+    )
+      return true;
+
+    if (allowDataImages && proto === "data:") {
+      return /^data:image\/(png|gif|jpe?g|webp|bmp|svg\+xml);/i.test(s);
+    }
+
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+function sanitizeHtml(dirtyHtml) {
+  const html = String(dirtyHtml ?? "");
+
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, "text/html");
+
+  doc
+    .querySelectorAll("script, style, iframe, object, embed, link, meta, base")
+    .forEach((n) => n.remove());
+
+  const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_ELEMENT);
+  const toRemove = [];
+
+  while (walker.nextNode()) {
+    const el = walker.currentNode;
+    const tag = el.tagName;
+
+    if (!ALLOWED_TAGS.has(tag)) {
+      const parent = el.parentNode;
+      if (parent) {
+        while (el.firstChild) parent.insertBefore(el.firstChild, el);
+        toRemove.push(el);
+      } else {
+        toRemove.push(el);
+      }
+      continue;
+    }
+
+    const allowedForTag = new Set([
+      ...(ALLOWED_ATTRS["*"] || []).map((x) => x.toLowerCase()),
+      ...(ALLOWED_ATTRS[tag] || []).map((x) => x.toLowerCase()),
+    ]);
+
+    for (const attr of Array.from(el.attributes)) {
+      const name = attr.name.toLowerCase();
+
+      if (name.startsWith("on") || name === "style") {
+        el.removeAttribute(attr.name);
+        continue;
+      }
+
+      if (!allowedForTag.has(name)) {
+        el.removeAttribute(attr.name);
+        continue;
+      }
+
+      if (tag === "A" && name === "href") {
+        const href = el.getAttribute("href");
+        if (!isSafeUrl(href, { allowDataImages: false })) {
+          el.removeAttribute("href");
+        } else {
+          const target = (el.getAttribute("target") || "").toLowerCase();
+          if (target === "_blank") {
+            const rel = (el.getAttribute("rel") || "").toLowerCase();
+            const needed = ["noopener", "noreferrer"];
+            const relParts = new Set(rel.split(/\s+/).filter(Boolean));
+            needed.forEach((p) => relParts.add(p));
+            el.setAttribute("rel", Array.from(relParts).join(" "));
+          }
+        }
+      }
+
+      if (tag === "IMG" && name === "src") {
+        const src = el.getAttribute("src");
+        if (!isSafeUrl(src, { allowDataImages: false })) {
+          toRemove.push(el);
+        }
+      }
+    }
+
+    if (tag === "IMG") {
+      const cls = (el.getAttribute("class") || "").split(/\s+/);
+      const isColImg = cls.includes("col-img");
+
+      if (!isColImg) {
+        toRemove.push(el);
+      } else {
+        if (!el.getAttribute("alt")) el.setAttribute("alt", "");
+        el.setAttribute("loading", "lazy");
+        el.setAttribute("decoding", "async");
+      }
+    }
+  }
+
+  toRemove.forEach((n) => n.remove());
+
+  return doc.body.innerHTML;
+}
+
+/* ============================================================================
    Caret / focus helpers (mobile-friendly)
 ============================================================================ */
 
@@ -260,7 +425,7 @@ export function renderColumn(row) {
   const body = document.createElement("div");
   body.className = "col-body";
 
-  body.innerHTML = row.html || "";
+  body.innerHTML = sanitizeHtml(row.html || "");
 
   body.contentEditable = "false";
 
@@ -331,10 +496,8 @@ export async function saveColumnEl(el) {
   const body = getBody(el);
   if (!body) return false;
 
-  // HTML cleaning disabled for now:
-  // const html = normalizeHtml(body.innerHTML || "");
-  // const html = sanitizeHtml(body.innerHTML || "");
-  const html = body.innerHTML || "";
+  // Sanitizes the HTML that gets stored, without rewriting the live DOM
+  const html = sanitizeHtml(body.innerHTML || "");
 
   const { data, error } = await supabase
     .from("columns")
@@ -733,9 +896,7 @@ export function attachAutosaveHandlers(columnEls) {
               const body = el ? getBody(el) : null;
               if (!body) continue;
 
-              // HTML cleaning disabled for now:
-              // const incoming = sanitizeHtml(r.html || "");
-              const incoming = r.html || "";
+              const incoming = sanitizeHtml(r.html || "");
 
               if (body.innerHTML !== incoming) body.innerHTML = incoming;
               body.contentEditable = "false";

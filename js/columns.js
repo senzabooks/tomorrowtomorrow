@@ -12,7 +12,7 @@ export function mountAddColumnTile() {
   tile.className = "column add-column";
   tile.contentEditable = "false";
 
-  tile.innerHTML = `<h2 class="Add-Column">Add New Column...</h2>`;
+  tile.innerHTML = `<p class="Add-Column">Add a new column...</p>`;
   const trigger = tile.querySelector(".Add-Column");
 
   async function addColumn() {
