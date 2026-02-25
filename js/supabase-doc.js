@@ -772,6 +772,7 @@ export function attachAutosaveHandlers(columnEls) {
     });
 
     // Keyboard shortcuts
+
     body.addEventListener("keydown", (e) => {
       if (!haveLock || ACTIVE_COL_ID !== id) return;
 
@@ -817,14 +818,13 @@ export function attachAutosaveHandlers(columnEls) {
       const isTouch = matchMedia("(hover: none) and (pointer: coarse)").matches;
 
       if (e.key === "Enter") {
-        if (isTouch) {
-          // let iOS handle Enter
-          return;
-        }
+        if (isTouch) return; // let iOS handle Enter natively
 
-        // desktop : force single <br>
         e.preventDefault();
-        document.execCommand("insertHTML", false, "<br>");
+
+        // Enter = line break (like Shift+Enter), caret moves immediately
+        document.execCommand("insertLineBreak", false, null);
+
         onEdit();
         return;
       }
